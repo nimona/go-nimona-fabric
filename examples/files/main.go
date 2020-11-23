@@ -145,7 +145,6 @@ func (ft *fileTransfer) serve(
 	fmt.Println(">> blob hash:", blobUnl.ToObject().Hash())
 	fmt.Println(">> file hash:", fl.ToObject().Hash())
 
-	// os.Exit(1)
 	// register for termination signals
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -169,6 +168,9 @@ func (ft *fileTransfer) findAndRequest(
 	if len(peers) == 0 {
 		return nil, errors.New("no providers found")
 	}
+
+	fmt.Println(">>> Found providers", len(peers))
+	fmt.Println(">>> Asking provider", peers[0].Addresses, peers[0].Relays[0].Addresses)
 
 	obj, err := ft.objectmanager.Request(ctx, hash, peers[0], true)
 	if err != nil {
@@ -247,11 +249,22 @@ func newFileTransfer(
 	)
 	ft.local = local
 
+	local.PutRelays(
+		&peer.ConnectionInfo{
+			PublicKey: "ed25519.CJi6yjjXuNBFDoYYPrp697d6RmpXeW8ZUZPmEce9AgEc",
+			Addresses: []string{
+				"tcps:asimov.bootstrap.nimona.io:22581",
+			},
+		},
+	)
+
 	// construct new network
 	net := network.New(
 		ctx,
 		network.WithLocalPeer(local),
 	)
+
+	fmt.Println("... Binding to", cfg.Peer.BindAddress)
 
 	if cfg.Peer.BindAddress != "" {
 		// start listening
@@ -260,6 +273,7 @@ func newFileTransfer(
 			cfg.Peer.BindAddress,
 			network.ListenOnLocalIPs,
 			network.ListenOnPrivateIPs,
+			network.ListenOnExternalPort,
 		)
 		if err != nil {
 			logger.Fatal("error while listening", log.Error(err))
