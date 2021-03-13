@@ -468,10 +468,6 @@ func (w *network) handleObjects(sub EnvelopeSubscription) error {
 
 			// and if this is not a dataforward then we assume it is for us
 			if o.Type != dataForwardType {
-				if o.Metadata.Signature.IsEmpty() {
-					logger.Error("forwarded object has no signature")
-					continue
-				}
 				w.inboxes.Publish(&Envelope{
 					Sender:  o.Metadata.Signature.Signer,
 					Payload: o,
