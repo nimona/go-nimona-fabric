@@ -27,6 +27,7 @@ import (
 	"github.com/gotailwindcss/tailwind/twhandler"
 	"github.com/gotailwindcss/tailwind/twpurge"
 	"github.com/shurcooL/httpfs/vfsutil"
+	"github.com/webview/webview"
 
 	"nimona.io/pkg/config"
 	"nimona.io/pkg/context"
@@ -675,9 +676,46 @@ func main() {
 		}
 	})
 
-	if err := http.ListenAndServe(":"+port, r); err != nil {
-		fmt.Printf("unable to start http server, %s", err.Error())
-	}
+	go func() {
+		fmt.Println("Serving hub")
+		if err := http.ListenAndServe(":"+port, r); err != nil {
+			fmt.Printf("unable to start http server, %s", err.Error())
+			os.Exit(1)
+		}
+	}()
+
+	fmt.Println("Starting webview")
+
+	debug := true
+	w := webview.New(debug)
+	defer w.Destroy()
+
+	w.SetTitle("Nimona Hub")
+	w.SetSize(800, 600, webview.HintNone)
+	w.Bind("quit", func() {
+		w.Terminate()
+	})
+	w.Init(`
+		window.addEventListener(
+			"keypress",
+			(event) => {
+				if (event.metaKey && event.key === 'c') {
+					document.execCommand("copy")
+					event.preventDefault();
+				}
+				if (event.metaKey && event.key === 'v') {
+					document.execCommand("paste")
+					event.preventDefault();
+				}
+				if (event.metaKey && event.key === 'q') {
+					quit();
+					event.preventDefault();
+				}
+			}
+		);
+	`)
+	w.Navigate("http://localhost:3000")
+	w.Run()
 }
 
 var prettyJSONReg = regexp.MustCompile(`(?mi)"(bah[a-z0-9]{59})"`)
